@@ -715,18 +715,19 @@ fn search_core(
             total += 1;
             *counts.entry(role_key(doc.role).to_string()).or_insert(0) += 1;
 
-            // Title / metadata bonus.
+            // Boost hits whose session name matches any query term/phrase, so a
+            // session "titled after" the search ranks above incidental matches.
             let mut score = doc.role.weight();
-            if let Some(name) = &cached.name {
-                if !filter_only
-                    && find_ci(
-                        name,
-                        &to_chars(&q.terms.first().cloned().unwrap_or_default()),
-                        0,
-                    )
-                    .is_some()
-                {
-                    score += 60.0;
+            if !filter_only {
+                if let Some(name) = &cached.name {
+                    let name_hit = q
+                        .terms
+                        .iter()
+                        .chain(q.phrases.iter())
+                        .any(|t| find_ci(name, &to_chars(t), 0).is_some());
+                    if name_hit {
+                        score += 60.0;
+                    }
                 }
             }
             score += (occurrences as f64).min(20.0) * 1.5;
@@ -980,6 +981,33 @@ mod tests {
         assert_eq!(r.hits[0].role, DocRole::User);
         assert!(r.hits[0].highlights.is_empty());
         assert!(!r.hits[0].snippet.is_empty());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn session_name_match_outranks_body_match() {
+        let dir = sample_dir("rank");
+        // A second session whose *name* mentions connection_pool.
+        let file = dir.join("--root-workspace--/2026-01-02T00-00-00-000Z_s2.jsonl");
+        let lines = [
+            r#"{"type":"session","version":3,"id":"s2","timestamp":"2026-01-02T00:00:00.000Z","cwd":"/root/workspace"}"#,
+            r#"{"type":"message","id":"u1","parentId":null,"timestamp":"2026-01-02T00:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"connection_pool"}],"timestamp":1}}"#,
+            r#"{"type":"session_info","id":"si","parentId":"u1","timestamp":"2026-01-02T00:00:02.000Z","name":"connection_pool 调优记录"}"#,
+        ];
+        fs::write(&file, lines.join("\n") + "\n").unwrap();
+
+        let mut cache = HashMap::new();
+        let r = search_core(&dir, "connection_pool", &mut cache, 100).unwrap();
+        assert!(r.hits.len() >= 2);
+        assert_eq!(
+            r.hits[0].session_name.as_deref(),
+            Some("connection_pool 调优记录"),
+            "named session should rank first: {:?}",
+            r.hits
+                .iter()
+                .map(|h| h.session_name.clone())
+                .collect::<Vec<_>>()
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 
