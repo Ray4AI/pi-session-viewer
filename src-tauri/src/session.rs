@@ -81,7 +81,16 @@ fn dirs_home() -> PathBuf {
     PathBuf::from(".")
 }
 
-/// Convert a `--root-workspace--` directory name back into a path-like label.
+/// Convert a pi session directory name back into a path-like label.
+///
+/// pi encodes cwd as `--` + cwd with the leading slash stripped and
+/// `[/\\:]` replaced by `-`, e.g.:
+///   `/root/workspace`   -> `--root-workspace--`
+///   `C:\Users\Ray\web` -> `--C-Users-Ray-web--`
+///
+/// This is inherently lossy (real hyphens are indistinguishable from
+/// separators), so it is only a fallback for sessions whose header has no
+/// `cwd`. The entry separator makes a best-effort decode possible.
 pub fn project_label_from_dir(dir_name: &str) -> String {
     let inner = dir_name
         .trim_start_matches("--")
@@ -90,10 +99,16 @@ pub fn project_label_from_dir(dir_name: &str) -> String {
     if inner.is_empty() {
         return "/".to_string();
     }
-    // Directory names replace '/' with '-'. Restore a best-effort label.
-    if inner == "root" {
-        return "/root".to_string();
+
+    // Windows drive letter: `C-Users-Ray-web` -> `C:/Users/Ray/web`.
+    let bytes = inner.as_bytes();
+    if bytes.len() >= 2 && bytes[1] == b'-' && bytes[0].is_ascii_alphabetic() {
+        let drive = inner[..1].to_ascii_uppercase();
+        let rest = inner[2..].replace('-', "/");
+        return format!("{drive}:/{rest}");
     }
+
+    // Unix-style: `root-workspace` -> `/root/workspace`.
     format!("/{}", inner.replace('-', "/"))
 }
 
@@ -516,6 +531,12 @@ mod tests {
     fn project_label_roundtrip() {
         assert_eq!(project_label_from_dir("--root--"), "/root");
         assert_eq!(project_label_from_dir("--root-workspace--"), "/root/workspace");
+        // Windows drive letters decode to a drive-rooted path.
+        assert_eq!(
+            project_label_from_dir("--C-Users-Ray-project--"),
+            "C:/Users/Ray/project"
+        );
+        assert_eq!(project_label_from_dir("----"), "/");
     }
 
     #[test]
