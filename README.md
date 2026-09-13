@@ -114,6 +114,18 @@ npm run tauri build
 
 产物在 `src-tauri/target/release/bundle/`。
 
+### 从 Linux 交叉编译 Windows 安装包
+
+需要 `mingw-w64` 与 `nsis`（`sudo apt-get install mingw-w64 nsis`）：
+
+```bash
+rustup target add x86_64-pc-windows-gnu
+npm run tauri build --target x86_64-pc-windows-gnu
+```
+
+产物：`src-tauri/target/x86_64-pc-windows-gnu/release/bundle/nsis/*-setup.exe`。
+Tauri 将交叉编译标记为实验性；正式发布由 [release workflow](.github/workflows/release.yml) 在 `windows-latest` 上原生构建。
+
 ### 测试
 
 ```bash

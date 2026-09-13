@@ -1,0 +1,18 @@
+# Cross-compile to Windows (GNU toolchain) from Linux.
+#
+# Prerequisites:
+#   sudo apt-get install mingw-w64 nsis
+#   rustup target add x86_64-pc-windows-gnu
+#
+# Then:
+#   npm run tauri build --target x86_64-pc-windows-gnu
+#
+# Produces:
+#   src-tauri/target/x86_64-pc-windows-gnu/release/bundle/nsis/*-setup.exe
+#
+# Note: Tauri marks cross-compilation as experimental; the official release
+# builds run natively on windows-latest via .github/workflows/release.yml.
+# This config exists so a Windows installer can also be produced from Linux.
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"
+ar = "x86_64-w64-mingw32-ar"

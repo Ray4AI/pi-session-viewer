@@ -114,6 +114,19 @@ npm run tauri build
 
 Artifacts land in `src-tauri/target/release/bundle/`.
 
+### Cross-compile the Windows installer from Linux
+
+Requires `mingw-w64` and `nsis` (`sudo apt-get install mingw-w64 nsis`):
+
+```bash
+rustup target add x86_64-pc-windows-gnu
+npm run tauri build --target x86_64-pc-windows-gnu
+```
+
+Output: `src-tauri/target/x86_64-pc-windows-gnu/release/bundle/nsis/*-setup.exe`.
+Tauri treats cross-compilation as experimental; official releases build natively
+on `windows-latest` through the [release workflow](.github/workflows/release.yml).
+
 ### Test
 
 ```bash
