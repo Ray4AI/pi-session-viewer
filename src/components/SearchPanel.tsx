@@ -3,6 +3,7 @@ import { api, isTauri } from "../api";
 import type { DocRole, SearchHit, SearchResponse } from "../types";
 import {
   ROLE_META,
+  composeQuery,
   formatRelative,
   roleMeta,
   splitSnippet,
@@ -170,20 +171,14 @@ export function SearchPanel({ root, refreshToken, onOpenHit }: Props) {
           </div>
           <div className="filter-group">
             <div className="filter-label">
-              排除 <span className="filter-hint">Shift+点击直接排除</span>
+              排除 <span className="filter-hint">点击排除该角色</span>
             </div>
             <div className="filter-chips">
               {ROLE_META.map((r) => (
                 <button
                   key={r.key}
                   className={`chip ${r.className} ${excludeRoles.includes(r.key) ? "exclude" : ""}`}
-                  onClick={(e) => {
-                    if (e.shiftKey) {
-                      toggleExcludeRole(r.key);
-                    } else {
-                      toggleExcludeRole(r.key);
-                    }
-                  }}
+                  onClick={() => toggleExcludeRole(r.key)}
                   title={`排除 ${r.label}`}
                 >
                   {r.short}
@@ -315,17 +310,4 @@ function HitRow({
       </div>
     </button>
   );
-}
-
-/** Compose the backend query string from UI state. */
-function composeQuery(
-  text: string,
-  roles: DocRole[],
-  extras: { excludeRoles?: DocRole[] } = {},
-): string {
-  const parts: string[] = [];
-  if (text.trim()) parts.push(text.trim());
-  if (roles.length > 0) parts.push(`role:${roles.join("+")}`);
-  for (const r of extras.excludeRoles ?? []) parts.push(`-role:${r}`);
-  return parts.join(" ");
 }
