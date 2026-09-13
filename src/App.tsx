@@ -15,6 +15,7 @@ import {
   formatBytes,
   formatCost,
   formatTime,
+  findItemMatches,
   findLeafContaining,
   formatTokens,
   leaves,
@@ -42,6 +43,10 @@ export default function App() {
   const [focusEntry, setFocusEntry] = useState<string | null>(null);
   /** Bumped to re-run the search after a refresh. */
   const [searchToken, setSearchToken] = useState(0);
+  /** In-session find (independent of global content search). */
+  const [findOpen, setFindOpen] = useState(false);
+  const [findText, setFindText] = useState("");
+  const [findIndex, setFindIndex] = useState(0);
 
   const refresh = useCallback(
     async (r?: string) => {
@@ -167,6 +172,82 @@ export default function App() {
     [detail],
   );
 
+  // In-session find: which rendered items contain the text.
+  const findMatches = useMemo(
+    () => (findOpen && findText.trim() ? findItemMatches(items, findText) : []),
+    [items, findText, findOpen],
+  );
+
+  // Keep the active match index in range as the query changes.
+  useEffect(() => {
+    setFindIndex(0);
+  }, [findText, detail]);
+
+  // Scroll to the active in-session match.
+  useEffect(() => {
+    if (!findOpen || findMatches.length === 0) return;
+    const itemIdx = findMatches[Math.min(findIndex, findMatches.length - 1)];
+    const entryId = items[itemIdx]?.entry.id;
+    if (!entryId) return;
+    const el = document.getElementById(`entry-${entryId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("find-active");
+      const t = setTimeout(() => el.classList.remove("find-active"), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [findIndex, findMatches, findOpen, items]);
+
+  const gotoMatch = useCallback(
+    (delta: number) => {
+      if (findMatches.length === 0) return;
+      setFindIndex((i) => {
+        const n = findMatches.length;
+        return (((i + delta) % n) + n) % n;
+      });
+    },
+    [findMatches.length],
+  );
+
+  // Ctrl/Cmd+F opens the in-session find bar when a session is open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        if (!detail) return;
+        e.preventDefault();
+        setFindOpen(true);
+        setTimeout(() => {
+          const el = document.getElementById(
+            "find-input",
+          ) as HTMLInputElement | null;
+          el?.focus();
+          el?.select();
+        }, 0);
+      }
+      if (e.key === "Escape" && findOpen) {
+        setFindOpen(false);
+        setFindText("");
+      }
+      if (
+        e.key === "F3" ||
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "g")
+      ) {
+        if (!findOpen) return;
+        e.preventDefault();
+        gotoMatch(e.shiftKey ? -1 : 1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [detail, findOpen, gotoMatch]);
+
+  // Reset find when switching sessions.
+  useEffect(() => {
+    setFindOpen(false);
+    setFindText("");
+    setFindIndex(0);
+  }, [selectedPath]);
+
   return (
     <div className={`app ${view === "search" ? "search-mode" : ""}`}>
       <div className="left-pane">
@@ -227,7 +308,67 @@ export default function App() {
               branchPoints={branches.length}
               leafId={leafId}
               onLeafChange={setLeafId}
+              onFind={() => {
+                setFindOpen(true);
+                setTimeout(() => {
+                  const el = document.getElementById(
+                    "find-input",
+                  ) as HTMLInputElement | null;
+                  el?.focus();
+                }, 0);
+              }}
             />
+            {findOpen && (
+              <div className="find-bar">
+                <span className="find-icon">🔎</span>
+                <input
+                  id="find-input"
+                  className="find-input"
+                  value={findText}
+                  onChange={(e) => setFindText(e.target.value)}
+                  placeholder="在本会话中查找…  (Enter 下一个 / Esc 关闭)"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      gotoMatch(e.shiftKey ? -1 : 1);
+                    }
+                  }}
+                />
+                <span className="find-count">
+                  {findText.trim()
+                    ? findMatches.length > 0
+                      ? `${Math.min(findIndex + 1, findMatches.length)} / ${findMatches.length}`
+                      : "无匹配"
+                    : ""}
+                </span>
+                <button
+                  className="find-btn"
+                  onClick={() => gotoMatch(-1)}
+                  disabled={findMatches.length === 0}
+                  title="上一个 (Shift+Enter)"
+                >
+                  ↑
+                </button>
+                <button
+                  className="find-btn"
+                  onClick={() => gotoMatch(1)}
+                  disabled={findMatches.length === 0}
+                  title="下一个 (Enter)"
+                >
+                  ↓
+                </button>
+                <button
+                  className="find-btn"
+                  onClick={() => {
+                    setFindOpen(false);
+                    setFindText("");
+                  }}
+                  title="关闭 (Esc)"
+                >
+                  ×
+                </button>
+              </div>
+            )}
             <div className="timeline">
               {items.map((item, i) => (
                 <div
@@ -242,6 +383,9 @@ export default function App() {
                       toolCalls={item.toolCalls}
                       index={i}
                       timestamp={item.entry.timestamp}
+                      highlight={
+                        findOpen && findText.trim() ? findText : undefined
+                      }
                     />
                   ) : (
                     <EventRow
@@ -267,6 +411,7 @@ function SessionHeader({
   branchPoints,
   leafId,
   onLeafChange,
+  onFind,
 }: {
   detail: SessionDetail;
   stats: ReturnType<typeof computeStats>;
@@ -274,6 +419,7 @@ function SessionHeader({
   branchPoints: number;
   leafId: string | null;
   onLeafChange: (id: string | null) => void;
+  onFind: () => void;
 }) {
   return (
     <header className="session-header">
@@ -282,6 +428,13 @@ function SessionHeader({
         {detail.summary.has_errors && (
           <span className="badge-error">包含错误</span>
         )}
+        <button
+          className="header-find-btn"
+          onClick={onFind}
+          title="在本会话中查找 (Ctrl+F)"
+        >
+          🔎 查找
+        </button>
       </div>
       <div className="header-meta">
         <Meta label="目录" value={detail.summary.cwd} mono />

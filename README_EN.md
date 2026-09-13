@@ -66,6 +66,10 @@ The UI also provides:
 
 Search is mtime-cached: the first run indexes everything, later runs re-parse only changed files (~200–400 ms across 93 sessions).
 
+**In-session find (Ctrl/Cmd + F)** — once a session is open, search within just that session: shows `current / total`, highlights matches in yellow, and steps through them with the arrow buttons, `Enter` / `Shift+Enter`, or `F3` (`Esc` to close).
+
+![In-session find](docs/images/find-demo.png)
+
 ### 💬 Structured conversation timeline
 | Content | Rendering |
 |---------|-----------|

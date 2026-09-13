@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import type { AgentMessage } from "../types";
 import type { ToolCallView as ToolCallViewType } from "../sessionModel";
 import {
@@ -16,6 +16,27 @@ interface Props {
   toolCalls?: ToolCallViewType[];
   index: number;
   timestamp?: string | number;
+  /** When set, occurrences inside rendered text are highlighted. */
+  highlight?: string;
+}
+
+/** Wrap every case-insensitive occurrence of `query` in a <mark>. */
+export function Highlighted({ text, query }: { text: string; query?: string }) {
+  if (!query || !query.trim()) return <>{text}</>;
+  const q = query.trim().toLowerCase();
+  const hay = text.toLowerCase();
+  const out: React.ReactNode[] = [];
+  let from = 0;
+  let key = 0;
+  for (;;) {
+    const at = hay.indexOf(q, from);
+    if (at === -1) break;
+    if (at > from) out.push(<span key={key++}>{text.slice(from, at)}</span>);
+    out.push(<mark key={key++}>{text.slice(at, at + q.length)}</mark>);
+    from = at + q.length;
+  }
+  if (from < text.length) out.push(<span key={key++}>{text.slice(from)}</span>);
+  return <>{out}</>;
 }
 
 export function MessageView({
@@ -41,9 +62,11 @@ export function MessageView({
 function UserMessage({
   message,
   index,
+  highlight,
 }: {
   message: AgentMessage;
   index: number;
+  highlight?: string;
 }) {
   const blocks = contentBlocks(message.content);
   return (
@@ -59,7 +82,10 @@ function UserMessage({
           if (b.type === "text")
             return (
               <div key={i} className="user-text">
-                {String((b as { text: string }).text)}
+                <Highlighted
+                  text={String((b as { text: string }).text)}
+                  query={highlight}
+                />
               </div>
             );
           if (b.type === "image") {
@@ -84,10 +110,12 @@ function AssistantMessage({
   message,
   toolCalls,
   timestamp,
+  highlight,
 }: {
   message: AgentMessage;
   toolCalls: ToolCallViewType[];
   timestamp?: string | number;
+  highlight?: string;
 }) {
   const blocks = contentBlocks(message.content);
   const usage = message.usage;
@@ -120,15 +148,21 @@ function AssistantMessage({
               <ThinkingBlock
                 key={i}
                 text={String((b as { thinking: string }).thinking)}
+                query={highlight}
               />
             );
           }
           if (b.type === "text") {
-            return (
-              <Markdown key={i}>
-                {String((b as { text: string }).text)}
-              </Markdown>
-            );
+            const t = String((b as { text: string }).text);
+            // While finding, render plain text so <mark> highlights show up.
+            if (highlight) {
+              return (
+                <div key={i} className="markdown-body find-text">
+                  <Highlighted text={t} query={highlight} />
+                </div>
+              );
+            }
+            return <Markdown key={i}>{t}</Markdown>;
           }
           if (b.type === "toolCall") {
             const tc = toolCalls.find(
@@ -192,7 +226,7 @@ function AssistantMessage({
   );
 }
 
-function ThinkingBlock({ text }: { text: string }) {
+function ThinkingBlock({ text, query }: { text: string; query?: string }) {
   const [open, setOpen] = useState(false);
   const preview = text.replace(/\s+/g, " ").slice(0, 80);
   return (
@@ -203,7 +237,11 @@ function ThinkingBlock({ text }: { text: string }) {
         {!open && <span className="thinking-preview">{preview}…</span>}
         <span className="chev">{open ? "▾" : "▸"}</span>
       </button>
-      {open && <pre className="thinking-body">{text}</pre>}
+      {open && (
+        <pre className="thinking-body">
+          {query ? <Highlighted text={text} query={query} /> : text}
+        </pre>
+      )}
     </div>
   );
 }

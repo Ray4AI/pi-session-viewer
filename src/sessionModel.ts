@@ -581,3 +581,66 @@ export function findLeafContaining(
   }
   return null;
 }
+
+/** Plain text of a render item, used for in-session find. */
+export function itemSearchText(item: RenderItem): string {
+  if (item.kind === "event") {
+    return `${item.label} ${item.detail ?? ""}`;
+  }
+  const m = item.message;
+  const blocks = contentBlocks(m.content);
+  const parts: string[] = [];
+  for (const b of blocks) {
+    if (b.type === "text") parts.push(String((b as { text: string }).text));
+    else if (b.type === "thinking")
+      parts.push(String((b as { thinking: string }).thinking));
+    else if (b.type === "toolCall") {
+      const call = b as unknown as {
+        name: string;
+        arguments: Record<string, unknown>;
+      };
+      parts.push(`${call.name} ${safeJson(call.arguments)}`);
+    }
+  }
+  for (const tc of item.toolCalls ?? []) {
+    parts.push(tc.call.name);
+    parts.push(safeJson(tc.call.arguments));
+    if (tc.result) {
+      parts.push(
+        contentBlocks(tc.result.content)
+          .map((x) =>
+            x.type === "text" ? String((x as { text: string }).text) : "",
+          )
+          .join(" "),
+      );
+    }
+  }
+  return parts.join("\n");
+}
+
+/** Indexes of render items whose text contains `query` (case-insensitive). */
+export function findItemMatches(items: RenderItem[], query: string): number[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const out: number[] = [];
+  items.forEach((item, i) => {
+    if (itemSearchText(item).toLowerCase().includes(q)) out.push(i);
+  });
+  return out;
+}
+
+/** Which content blocks of an assistant message match (for inline highlight). */
+export function countOccurrences(text: string, query: string): number {
+  const q = query.trim().toLowerCase();
+  if (!q) return 0;
+  const hay = text.toLowerCase();
+  let count = 0;
+  let from = 0;
+  for (;;) {
+    const at = hay.indexOf(q, from);
+    if (at === -1) break;
+    count++;
+    from = at + Math.max(1, q.length);
+  }
+  return count;
+}

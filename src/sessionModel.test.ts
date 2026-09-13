@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { RawEntry } from "./types";
 import {
   ROLE_META,
+  countOccurrences,
+  findItemMatches,
   composeQuery,
   roleMeta,
   splitSnippet,
@@ -267,5 +269,41 @@ describe("roleMeta", () => {
       expect(roleMeta(meta.key).label).toBeTruthy();
       expect(roleMeta(meta.key).className).toMatch(/^role-/);
     }
+  });
+});
+
+describe("findItemMatches / countOccurrences", () => {
+  const items = buildRenderItems(activeBranch(session()));
+
+  it("finds items containing the query, case-insensitively", () => {
+    expect(findItemMatches(items, "HELLO")).toHaveLength(1);
+    expect(findItemMatches(items, "hello")).toHaveLength(1);
+  });
+
+  it("finds text inside tool calls and results", () => {
+    // "file.txt" appears only in the tool result; "ls" only in the tool call.
+    expect(findItemMatches(items, "file.txt")).toHaveLength(1);
+    expect(findItemMatches(items, "ls")).toHaveLength(1);
+  });
+
+  it("finds text inside thinking blocks", () => {
+    expect(findItemMatches(items, "hmm")).toHaveLength(1);
+  });
+
+  it("returns nothing for an empty query", () => {
+    expect(findItemMatches(items, "")).toHaveLength(0);
+    expect(findItemMatches(items, "   ")).toHaveLength(0);
+  });
+
+  it("returns nothing when there is no match", () => {
+    expect(findItemMatches(items, "zzz-not-present")).toHaveLength(0);
+  });
+
+  it("counts non-overlapping occurrences", () => {
+    expect(countOccurrences("aaa", "a")).toBe(3);
+    expect(countOccurrences("abcabc", "abc")).toBe(2);
+    expect(countOccurrences("hello world", "world")).toBe(1);
+    expect(countOccurrences("hello", "zzz")).toBe(0);
+    expect(countOccurrences("hello", "")).toBe(0);
   });
 });
