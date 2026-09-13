@@ -14,7 +14,7 @@ interface Props {
   root: string;
   /** Bumped by the parent to force a re-run (e.g. after refresh). */
   refreshToken: number;
-  onOpenHit: (hit: SearchHit) => void;
+  onOpenHit: (hit: SearchHit, rawQuery: string) => void;
 }
 
 const ROLE_ORDER: DocRole[] = [
@@ -268,7 +268,7 @@ export function SearchPanel({ root, refreshToken, onOpenHit }: Props) {
               <HitRow
                 key={`${h.sessionPath}:${h.entryId}:${h.role}:${i}`}
                 hit={h}
-                onOpen={onOpenHit}
+                onOpen={(h) => onOpenHit(h, text)}
               />
             ))}
           </div>

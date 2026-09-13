@@ -644,3 +644,24 @@ export function countOccurrences(text: string, query: string): number {
   }
   return count;
 }
+
+/**
+ * Extract the highlightable free-text from a search query, dropping syntax
+ * tokens (role:, model:, project:, leading '-') and quotes. Returns "" when
+ * the query has no text terms (e.g. a filter-only query).
+ */
+export function extractHighlightText(query: string): string {
+  const out: string[] = [];
+  for (const raw of query.match(/"[^"]*"|\S+/g) ?? []) {
+    let tok = raw;
+    if (tok.startsWith('"') && tok.endsWith('"') && tok.length > 2) {
+      out.push(tok.slice(1, -1));
+      continue;
+    }
+    if (tok.startsWith("-")) tok = tok.slice(1);
+    // Skip key:value syntax tokens.
+    if (/^[a-zA-Z]+\b:/.test(tok) || /^[\u4e00-\u9fff]+\b:/.test(tok)) continue;
+    if (tok) out.push(tok);
+  }
+  return out.join(" ");
+}

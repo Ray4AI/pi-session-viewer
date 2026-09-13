@@ -15,6 +15,7 @@ import {
   formatBytes,
   formatCost,
   formatTime,
+  extractHighlightText,
   findItemMatches,
   findLeafContaining,
   formatTokens,
@@ -41,6 +42,8 @@ export default function App() {
   const [view, setView] = useState<"sessions" | "search">("sessions");
   /** Entry id to scroll to + flash after jumping from a search hit. */
   const [focusEntry, setFocusEntry] = useState<string | null>(null);
+  /** Free-text from the jumped-from search hit, shown as highlights. */
+  const [jumpHighlight, setJumpHighlight] = useState<string>("");
   /** Bumped to re-run the search after a refresh. */
   const [searchToken, setSearchToken] = useState(0);
   /** In-session find (independent of global content search). */
@@ -94,6 +97,7 @@ export default function App() {
     async (path: string, focus?: string | null) => {
       setSelectedPath(path);
       setFocusEntry(focus ?? null);
+      if (!focus) setJumpHighlight("");
       try {
         const d = await api.loadSession(path);
         setDetail(d);
@@ -126,7 +130,8 @@ export default function App() {
   }, [focusEntry, detail, leafId]);
 
   const openSearchHit = useCallback(
-    async (hit: SearchHit) => {
+    async (hit: SearchHit, rawQuery?: string) => {
+      setJumpHighlight(rawQuery ? extractHighlightText(rawQuery) : "");
       if (hit.sessionPath === selectedPath && detail) {
         // Same session: make sure the hit's branch is the one on screen,
         // otherwise the target element would not exist.
@@ -384,7 +389,9 @@ export default function App() {
                       index={i}
                       timestamp={item.entry.timestamp}
                       highlight={
-                        findOpen && findText.trim() ? findText : undefined
+                        findOpen && findText.trim()
+                          ? findText
+                          : jumpHighlight || undefined
                       }
                     />
                   ) : (

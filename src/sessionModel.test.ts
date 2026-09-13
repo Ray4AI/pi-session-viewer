@@ -3,6 +3,7 @@ import type { RawEntry } from "./types";
 import {
   ROLE_META,
   countOccurrences,
+  extractHighlightText,
   findItemMatches,
   composeQuery,
   roleMeta,
@@ -305,5 +306,35 @@ describe("findItemMatches / countOccurrences", () => {
     expect(countOccurrences("hello world", "world")).toBe(1);
     expect(countOccurrences("hello", "zzz")).toBe(0);
     expect(countOccurrences("hello", "")).toBe(0);
+  });
+});
+
+describe("extractHighlightText", () => {
+  it("keeps plain terms", () => {
+    expect(extractHighlightText("connection pool")).toBe("connection pool");
+    expect(extractHighlightText("数据库连接池")).toBe("数据库连接池");
+  });
+
+  it("drops role/model/project tokens", () => {
+    expect(extractHighlightText("role:thinking 连接池")).toBe("连接池");
+    expect(extractHighlightText("pool role:user+assistant")).toBe("pool");
+    expect(extractHighlightText("model:claude pool project:/home/x")).toBe(
+      "pool",
+    );
+  });
+
+  it("drops negations and keeps the positive term", () => {
+    expect(extractHighlightText("pool -日志")).toBe("pool 日志");
+  });
+
+  it("unquotes phrases", () => {
+    expect(extractHighlightText('"connection pool" role:user')).toBe(
+      "connection pool",
+    );
+  });
+
+  it("returns empty for filter-only queries", () => {
+    expect(extractHighlightText("role:user")).toBe("");
+    expect(extractHighlightText("role:user -role:toolResult")).toBe("");
   });
 });
