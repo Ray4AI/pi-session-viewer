@@ -6,6 +6,8 @@
 
 一个基于 Tauri + React + Rust 的原生桌面工具：扫描目录 → 解析会话 → 结构化呈现
 
+<sub>中文 · <a href="README_EN.md">English</a></sub>
+
 [![Release](https://img.shields.io/github/v/release/Ray4AI/pi-session-viewer?style=flat-square)](https://github.com/Ray4AI/pi-session-viewer/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?style=flat-square&logo=tauri)](https://tauri.app)
