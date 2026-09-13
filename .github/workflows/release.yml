@@ -60,17 +60,36 @@ jobs:
       - name: Run frontend tests
         run: npm run test
 
+      - name: Build frontend
+        run: npm run build
+
       - name: Run Rust tests
         run: cargo test --manifest-path src-tauri/Cargo.toml --lib
 
+      # Manual runs just build artifacts (no release to attach them to).
+      - name: Build (no release)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: tauri-apps/tauri-action@v0
+        with:
+          args: ${{ matrix.args }}
+
+      # Tag pushes create/update a draft release with all platform installers.
       - name: Build and release
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Pi Session Viewer ${{ github.ref_name }}"
-          releaseBody: "See the assets below to download and install. Windows users: grab the `*-setup.exe` (NSIS installer) or `.msi`."
+          releaseBody: |
+            Download the installer for your platform below.
+
+            - **Windows 10/11 x64** — `*-setup.exe` (recommended) or `.msi`
+            - **macOS (Apple Silicon)** — `*.dmg`
+            - **Linux x64** — `*.AppImage` or `*.deb`
+
+            No runtime dependencies required (Tauri uses the system WebView2 on Windows).
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

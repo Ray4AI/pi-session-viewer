@@ -78,12 +78,14 @@ function AssistantMessage({
           {message.model && <span className="msg-model">{message.model}</span>}
           <span className="msg-time">{formatTime(timestamp ?? message.timestamp)}</span>
           {message.stopReason === "error" && <span className="badge-error">错误</span>}
-          {message.errorMessage && (
-            <span className="badge-error" title={message.errorMessage}>
-              错误
-            </span>
-          )}
         </div>
+
+        {message.errorMessage && (
+          <div className="error-message">
+            <span className="error-message-label">请求失败</span>
+            <span className="error-message-text">{message.errorMessage}</span>
+          </div>
+        )}
 
         {blocks.map((b, i) => {
           if (b.type === "thinking") {

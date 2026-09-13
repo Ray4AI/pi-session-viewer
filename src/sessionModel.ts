@@ -55,6 +55,12 @@ export function buildTree(entries: RawEntry[]): Map<string | null, RawEntry[]> {
 export function activeBranch(entries: RawEntry[], leafId?: string | null): RawEntry[] {
   const treeEntries = entries.filter((e) => e.type !== "session");
   if (treeEntries.length === 0) return [];
+
+  // Legacy v1 sessions are a linear sequence with no id/parentId linking.
+  const hasAnyId = treeEntries.some((e) => e.id);
+  const rootCount = treeEntries.filter((e) => !e.parentId).length;
+  if (!hasAnyId || rootCount === treeEntries.length) return treeEntries;
+
   const children = buildTree(treeEntries);
   const byId = new Map<string, RawEntry>();
   for (const e of treeEntries) if (e.id) byId.set(e.id, e);
@@ -91,6 +97,8 @@ export function activeBranch(entries: RawEntry[], leafId?: string | null): RawEn
 /** All leaf entries (nodes without children). */
 export function leaves(entries: RawEntry[]): RawEntry[] {
   const treeEntries = entries.filter((e) => e.type !== "session");
+  const hasAnyId = treeEntries.some((e) => e.id);
+  if (!hasAnyId) return treeEntries.slice(-1);
   const children = buildTree(treeEntries);
   const hasChild = new Set<string>();
   for (const [parent, kids] of children) {
@@ -145,7 +153,6 @@ export function buildRenderItems(branch: RawEntry[]): RenderItem[] {
   }
 
   const items: RenderItem[] = [];
-  const consumedResultIds = new Set<string>();
 
   for (const entry of branch) {
     switch (entry.type) {
@@ -155,7 +162,6 @@ export function buildRenderItems(branch: RawEntry[]): RenderItem[] {
         if (msg.role === "toolResult") {
           if (msg.toolCallId && resultsByCallId.has(msg.toolCallId)) {
             // Attached to its assistant tool call; skip standalone rendering.
-            consumedResultIds.add(msg.toolCallId);
             break;
           }
           items.push({ kind: "message", role: "toolResult", entry, message: msg });

@@ -151,3 +151,16 @@ describe("formatters", () => {
     expect(formatCost(1.2345)).toBe("$1.234");
   });
 });
+
+describe("legacy linear sessions", () => {
+  it("treats id-less entries as a flat sequence", () => {
+    const entries: RawEntry[] = [
+      { type: "session", timestamp: "2026-01-01T00:00:00Z" },
+      { type: "message", message: { role: "user", content: "a" } },
+      { type: "message", message: { role: "assistant", content: [{ type: "text", text: "b" }] } },
+    ];
+    const branch = activeBranch(entries);
+    expect(branch).toHaveLength(2);
+    expect(leaves(entries)).toHaveLength(1);
+  });
+});

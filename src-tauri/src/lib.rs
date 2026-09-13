@@ -1,8 +1,7 @@
 pub mod session;
 
 use session::{
-    count_sessions, default_sessions_root, list_projects, list_sessions, load_session, ProjectGroup,
-    SessionDetail, SessionSummary,
+    count_sessions, default_sessions_root, list_projects, list_sessions, load_session,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -20,7 +19,3 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-
-// Keep the imports referenced so future command additions compile cleanly.
-#[allow(dead_code)]
-fn _type_anchors(_: Option<SessionDetail>, _: Option<SessionSummary>, _: Option<ProjectGroup>) {}
