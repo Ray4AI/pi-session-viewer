@@ -42,6 +42,41 @@ export interface ProjectGroup {
   last_updated: string | null;
 }
 
+// --- Search ---
+
+export type DocRole =
+  "user" | "assistant" | "thinking" | "toolCall" | "toolResult" | "event";
+
+export interface SearchHit {
+  sessionPath: string;
+  sessionId: string;
+  sessionName: string | null;
+  sessionTitle: string;
+  cwd: string;
+  projectKey: string;
+  updatedAt: string | null;
+  role: DocRole;
+  entryId: string;
+  timestamp: string | null;
+  toolName: string | null;
+  snippet: string;
+  /** [start, end] char offsets into `snippet` to highlight. */
+  highlights: [number, number][];
+  score: number;
+  occurrences: number;
+}
+
+export interface SearchResponse {
+  hits: SearchHit[];
+  total: number;
+  truncated: boolean;
+  counts: Record<string, number>;
+  filesScanned: number;
+  filesParsed: number;
+  tookMs: number;
+  filterOnly: boolean;
+}
+
 // --- Content blocks ---
 
 export interface TextContent {

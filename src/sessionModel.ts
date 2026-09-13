@@ -2,6 +2,7 @@
 
 import type {
   AgentMessage,
+  DocRole,
   ContentBlock,
   RawEntry,
   SessionDetail,
@@ -446,4 +447,137 @@ export function formatRelative(iso: string | undefined | null): string {
   const day = Math.floor(hr / 24);
   if (day < 30) return `${day} 天前`;
   return d.toLocaleDateString();
+}
+
+// ---------------------------------------------------------------- search views
+
+export interface RoleMeta {
+  key: DocRole;
+  label: string;
+  short: string;
+  className: string;
+}
+
+/** Role filter chips shown in the search panel. */
+export const ROLE_META: RoleMeta[] = [
+  { key: "user", label: "用户", short: "用户", className: "role-user" },
+  {
+    key: "assistant",
+    label: "助手",
+    short: "助手",
+    className: "role-assistant",
+  },
+  { key: "thinking", label: "思考", short: "思考", className: "role-thinking" },
+  {
+    key: "toolCall",
+    label: "工具调用",
+    short: "调用",
+    className: "role-toolcall",
+  },
+  {
+    key: "toolResult",
+    label: "工具结果",
+    short: "结果",
+    className: "role-toolresult",
+  },
+  { key: "event", label: "事件", short: "事件", className: "role-event" },
+];
+
+export function roleMeta(role: DocRole): RoleMeta {
+  return ROLE_META.find((r) => r.key === role) ?? ROLE_META[0];
+}
+
+/** Split a snippet into plain / highlighted segments for rendering. */
+export function splitSnippet(
+  snippet: string,
+  highlights: [number, number][],
+): { text: string; hit: boolean }[] {
+  if (!highlights || highlights.length === 0)
+    return [{ text: snippet, hit: false }];
+  const chars = [...snippet];
+  const sorted = [...highlights]
+    .filter(([s, e]) => e > s && s < chars.length)
+    .map(
+      ([s, e]) =>
+        [Math.max(0, s), Math.min(chars.length, e)] as [number, number],
+    )
+    .sort((a, b) => a[0] - b[0]);
+
+  const out: { text: string; hit: boolean }[] = [];
+  let cursor = 0;
+  for (const [rawS, rawE] of sorted) {
+    // Clamp against the cursor so overlapping ranges never repeat text.
+    const s = Math.max(cursor, rawS);
+    const e = Math.max(s, rawE);
+    if (s > cursor)
+      out.push({ text: chars.slice(cursor, s).join(""), hit: false });
+    if (e > s) out.push({ text: chars.slice(s, e).join(""), hit: true });
+    cursor = e;
+  }
+  if (cursor < chars.length)
+    out.push({ text: chars.slice(cursor).join(""), hit: false });
+  return out.filter((seg) => seg.text.length > 0);
+}
+
+/** Build the query string sent to the backend from UI state. */
+export function composeQuery(
+  text: string,
+  roles: DocRole[],
+  extras: { model?: string; project?: string; excludeRoles?: DocRole[] } = {},
+): string {
+  const parts: string[] = [];
+  if (text.trim()) parts.push(text.trim());
+  const positive = roles.filter(
+    (r) => !(extras.excludeRoles ?? []).includes(r),
+  );
+  if (positive.length > 0) {
+    parts.push(`role:${positive.map((r) => r).join("+")}`);
+  }
+  for (const r of extras.excludeRoles ?? []) parts.push(`-role:${r}`);
+  if (extras.model?.trim()) parts.push(`model:${extras.model.trim()}`);
+  if (extras.project?.trim()) parts.push(`project:${extras.project.trim()}`);
+  return parts.join(" ");
+}
+
+/**
+ * Find the leaf whose branch contains `entryId`, so a search hit on a
+ * non-default branch can be displayed. Returns null when the entry is
+ * unreachable (or already on the default branch).
+ */
+export function findLeafContaining(
+  detail: SessionDetail,
+  entryId: string,
+): string | null {
+  const byId = new Map<string, RawEntry>();
+  for (const e of detail.entries) if (e.id) byId.set(e.id, e);
+
+  const target = byId.get(entryId);
+  if (!target) return null;
+
+  // Walk up from the target to collect its ancestor chain.
+  const chain = new Set<string>();
+  let cur: RawEntry | undefined = target;
+  const guard = new Set<string>();
+  while (cur && cur.id && !guard.has(cur.id)) {
+    guard.add(cur.id);
+    chain.add(cur.id);
+    cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+  }
+
+  // Default branch already contains it → no need to switch.
+  const def = activeBranch(detail.entries, null);
+  if (def.some((e) => e.id && chain.has(e.id) && e.id === entryId)) return null;
+
+  // Otherwise pick the leaf whose own ancestor chain includes the entry.
+  for (const leaf of leaves(detail.entries)) {
+    if (leaf.id && chain.has(leaf.id)) return leaf.id;
+    let walk: RawEntry | undefined = leaf;
+    const seen = new Set<string>();
+    while (walk && walk.id && !seen.has(walk.id)) {
+      seen.add(walk.id);
+      if (walk.id === entryId) return leaf.id ?? null;
+      walk = walk.parentId ? byId.get(walk.parentId) : undefined;
+    }
+  }
+  return null;
 }

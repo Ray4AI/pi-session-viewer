@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { RawEntry } from "./types";
 import {
+  ROLE_META,
+  composeQuery,
+  roleMeta,
+  splitSnippet,
   activeBranch,
   branchPoints,
   buildRenderItems,
@@ -188,5 +192,80 @@ describe("legacy linear sessions", () => {
     const branch = activeBranch(entries);
     expect(branch).toHaveLength(2);
     expect(leaves(entries)).toHaveLength(1);
+  });
+});
+
+describe("splitSnippet", () => {
+  it("splits into plain and highlighted segments", () => {
+    // "hello world", highlight "world" at chars 6..11
+    const segs = splitSnippet("hello world", [[6, 11]]);
+    expect(segs.map((s) => s.text).join("")).toBe("hello world");
+    expect(segs.filter((s) => s.hit).map((s) => s.text)).toEqual(["world"]);
+  });
+
+  it("handles multiple and overlapping ranges", () => {
+    const segs = splitSnippet("abcdef", [
+      [0, 2],
+      [1, 3],
+      [4, 6],
+    ]);
+    // Must not duplicate text; ranges are merged by cursor advance.
+    expect(segs.map((s) => s.text).join("")).toBe("abcdef");
+  });
+
+  it("handles CJK by character offsets", () => {
+    const segs = splitSnippet("中文搜索测试", [[2, 4]]);
+    expect(segs.map((s) => s.text).join("")).toBe("中文搜索测试");
+    expect(segs.filter((s) => s.hit).map((s) => s.text)).toEqual(["搜索"]);
+  });
+
+  it("returns a single plain segment when there are no highlights", () => {
+    expect(splitSnippet("text", [])).toEqual([{ text: "text", hit: false }]);
+  });
+
+  it("ignores out-of-range highlights", () => {
+    const segs = splitSnippet("ab", [[5, 9]]);
+    expect(segs.map((s) => s.text).join("")).toBe("ab");
+    expect(segs.some((s) => s.hit)).toBe(false);
+  });
+});
+
+describe("composeQuery", () => {
+  it("puts free text first and adds role filters", () => {
+    expect(composeQuery("hello", ["user", "assistant"])).toBe(
+      "hello role:user+assistant",
+    );
+  });
+
+  it("adds exclusions", () => {
+    expect(
+      composeQuery("hello", ["user"], { excludeRoles: ["toolResult"] }),
+    ).toBe("hello role:user -role:toolResult");
+  });
+
+  it("works with only role filters", () => {
+    expect(composeQuery("", ["thinking"])).toBe("role:thinking");
+  });
+
+  it("omits roles both selected and excluded from the positive list", () => {
+    const q = composeQuery("x", ["user", "thinking"], {
+      excludeRoles: ["thinking"],
+    });
+    expect(q).toContain("role:user");
+    expect(q).toContain("-role:thinking");
+    expect(q).not.toContain("role:user+thinking");
+  });
+
+  it("returns empty string when nothing is set", () => {
+    expect(composeQuery("", [])).toBe("");
+  });
+});
+
+describe("roleMeta", () => {
+  it("maps every role to a label and class", () => {
+    for (const meta of ROLE_META) {
+      expect(roleMeta(meta.key).label).toBeTruthy();
+      expect(roleMeta(meta.key).className).toMatch(/^role-/);
+    }
   });
 });

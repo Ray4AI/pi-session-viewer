@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, isTauri } from "./api";
-import type { ProjectGroup, SessionDetail, SessionSummary } from "./types";
+import type {
+  ProjectGroup,
+  SearchHit,
+  SessionDetail,
+  SessionSummary,
+} from "./types";
 import {
   activeBranch,
   branchPoints,
@@ -10,12 +15,14 @@ import {
   formatBytes,
   formatCost,
   formatTime,
+  findLeafContaining,
   formatTokens,
   leaves,
   sessionTitle,
 } from "./sessionModel";
 import { Sidebar } from "./components/Sidebar";
 import { MessageView } from "./components/MessageView";
+import { SearchPanel } from "./components/SearchPanel";
 import "./App.css";
 
 export default function App() {
@@ -29,6 +36,12 @@ export default function App() {
   const [activeProject, setActiveProject] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [leafId, setLeafId] = useState<string | null>(null);
+  /** "sessions" = browse sidebar, "search" = full-text search view. */
+  const [view, setView] = useState<"sessions" | "search">("sessions");
+  /** Entry id to scroll to + flash after jumping from a search hit. */
+  const [focusEntry, setFocusEntry] = useState<string | null>(null);
+  /** Bumped to re-run the search after a refresh. */
+  const [searchToken, setSearchToken] = useState(0);
 
   const refresh = useCallback(
     async (r?: string) => {
@@ -44,6 +57,7 @@ export default function App() {
         setSessions(list);
         const groups = await api.listProjects(useRoot || undefined);
         setProjects(groups);
+        setSearchToken((n) => n + 1);
       } catch (e) {
         setError(String(e));
       } finally {
@@ -71,17 +85,57 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const selectSession = useCallback(async (path: string) => {
-    setSelectedPath(path);
-    try {
-      const d = await api.loadSession(path);
-      setDetail(d);
-      setLeafId(null);
-      window.scrollTo({ top: 0 });
-    } catch (e) {
-      setError(String(e));
-    }
-  }, []);
+  const selectSession = useCallback(
+    async (path: string, focus?: string | null) => {
+      setSelectedPath(path);
+      setFocusEntry(focus ?? null);
+      try {
+        const d = await api.loadSession(path);
+        setDetail(d);
+        // A search hit may live on a non-default branch; pick the leaf that
+        // contains it so the message is actually rendered.
+        setLeafId(focus ? findLeafContaining(d, focus) : null);
+        if (!focus) window.scrollTo({ top: 0 });
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [],
+  );
+
+  // Scroll to (and briefly highlight) a message after jumping from search.
+  useEffect(() => {
+    if (!focusEntry || !detail) return;
+    const t = setTimeout(() => {
+      const el = document.getElementById(`entry-${focusEntry}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("flash");
+        setTimeout(() => el.classList.remove("flash"), 1600);
+      } else {
+        // Not on this branch — fall back to the top so the view isn't blank.
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }, 120);
+    return () => clearTimeout(t);
+  }, [focusEntry, detail, leafId]);
+
+  const openSearchHit = useCallback(
+    async (hit: SearchHit) => {
+      if (hit.sessionPath === selectedPath && detail) {
+        // Same session: make sure the hit's branch is the one on screen,
+        // otherwise the target element would not exist.
+        setLeafId(findLeafContaining(detail, hit.entryId));
+        setFocusEntry(null);
+        // Re-set on the next frame so the effect re-runs even for a repeat hit.
+        requestAnimationFrame(() => setFocusEntry(hit.entryId));
+      } else {
+        await selectSession(hit.sessionPath, hit.entryId);
+      }
+      setView("sessions");
+    },
+    [selectedPath, detail, selectSession],
+  );
 
   const pickRoot = useCallback(async () => {
     if (!isTauri) return;
@@ -114,21 +168,46 @@ export default function App() {
   );
 
   return (
-    <div className="app">
-      <Sidebar
-        sessions={sessions}
-        projects={projects}
-        selectedPath={selectedPath}
-        onSelect={selectSession}
-        query={query}
-        onQuery={setQuery}
-        activeProject={activeProject}
-        onProject={setActiveProject}
-        root={root}
-        onPickRoot={pickRoot}
-        loading={loading}
-        onRefresh={() => refresh()}
-      />
+    <div className={`app ${view === "search" ? "search-mode" : ""}`}>
+      <div className="left-pane">
+        <div className="view-switch">
+          <button
+            className={view === "sessions" ? "on" : ""}
+            onClick={() => setView("sessions")}
+          >
+            📂 会话
+          </button>
+          <button
+            className={view === "search" ? "on" : ""}
+            onClick={() => setView("search")}
+            title="全文内容搜索 (Ctrl+K)"
+          >
+            🔍 搜索
+          </button>
+        </div>
+        {view === "search" ? (
+          <SearchPanel
+            root={root}
+            refreshToken={searchToken}
+            onOpenHit={openSearchHit}
+          />
+        ) : (
+          <Sidebar
+            sessions={sessions}
+            projects={projects}
+            selectedPath={selectedPath}
+            onSelect={selectSession}
+            query={query}
+            onQuery={setQuery}
+            activeProject={activeProject}
+            onProject={setActiveProject}
+            root={root}
+            onPickRoot={pickRoot}
+            loading={loading}
+            onRefresh={() => refresh()}
+          />
+        )}
+      </div>
 
       <main className="main">
         {error && (
@@ -150,25 +229,29 @@ export default function App() {
               onLeafChange={setLeafId}
             />
             <div className="timeline">
-              {items.map((item, i) =>
-                item.kind === "message" ? (
-                  <MessageView
-                    key={item.entry.id ?? i}
-                    role={item.role}
-                    message={item.message}
-                    toolCalls={item.toolCalls}
-                    index={i}
-                    timestamp={item.entry.timestamp}
-                  />
-                ) : (
-                  <EventRow
-                    key={item.entry.id ?? i}
-                    label={item.label}
-                    detail={item.detail}
-                    timestamp={item.entry.timestamp}
-                  />
-                ),
-              )}
+              {items.map((item, i) => (
+                <div
+                  key={item.entry.id ?? i}
+                  id={item.entry.id ? `entry-${item.entry.id}` : undefined}
+                  className="entry-anchor"
+                >
+                  {item.kind === "message" ? (
+                    <MessageView
+                      role={item.role}
+                      message={item.message}
+                      toolCalls={item.toolCalls}
+                      index={i}
+                      timestamp={item.entry.timestamp}
+                    />
+                  ) : (
+                    <EventRow
+                      label={item.label}
+                      detail={item.detail}
+                      timestamp={item.entry.timestamp}
+                    />
+                  )}
+                </div>
+              ))}
             </div>
           </>
         )}

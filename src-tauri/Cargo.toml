@@ -1,6 +1,6 @@
 [package]
 name = "pi-session-viewer"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Tauri desktop viewer for pi coding agent session files"
 authors = ["Ray4AI"]
 edition = "2021"

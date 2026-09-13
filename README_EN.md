@@ -26,6 +26,10 @@ pi records every session to JSONL files under `~/.pi/agent/sessions/` — messag
 
 ![Screenshot (sample data)](docs/images/preview.png)
 
+**Full-text search** — search every message body, filter by role, see highlighted hits, click to jump:
+
+![Full-text search](docs/images/search-demo.png)
+
 ---
 
 ## Features
@@ -33,8 +37,34 @@ pi records every session to JSONL files under `~/.pi/agent/sessions/` — messag
 ### 📂 Session browsing
 - Recursively scans any directory for `.jsonl` session files (defaults to `~/.pi/agent/sessions/`)
 - Auto-groups sessions by **project directory**, with one-click filtering
-- **Full-text search** across title, cwd, model, session ID, and first message
+- **Full-text content search** (see below)
 - Each row shows message count, tool calls, file size, model, and an error marker
+
+### 🔍 Full-text content search
+
+Search the **body of every message**, not just titles — then jump straight to the hit.
+
+| Syntax | Effect | Example |
+|--------|--------|---------|
+| `term` | Fuzzy match, case-insensitive, CJK-aware | `connection pool` |
+| `"exact phrase"` | Must appear verbatim | `"connection pool"` |
+| `-term` | Exclude content containing it | `leak -log` |
+| `role:user` | Filter by role | `role:assistant` |
+| `role:assistant+thinking` | Multiple roles (OR) | `role:user+assistant` |
+| `-role:result` | Exclude a role | `pool -role:toolResult` |
+
+Roles: `user` `assistant` `thinking` `tool` (calls) `result` (tool output) `event`.
+
+The UI also provides:
+- **Role filter panel** — click coloured chips to include or exclude
+- **Per-role match counts**
+- **Highlighted snippets** — context with the match marked
+- **Occurrence counts** (e.g. "5 hits" inside one message)
+- **Grouping by session**, with session name and hit count
+- **Click to jump** — opens the message, switching branches if needed, and flashes it
+- **`Ctrl/Cmd + K`** to focus the search box
+
+Search is mtime-cached: the first run indexes everything, later runs re-parse only changed files (~200–400 ms across 93 sessions).
 
 ### 💬 Structured conversation timeline
 | Content | Rendering |

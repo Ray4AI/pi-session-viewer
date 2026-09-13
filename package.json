@@ -1,7 +1,7 @@
 {
   "name": "pi-session-viewer",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "A Tauri desktop viewer for pi coding agent session files",
   "repository": {

@@ -127,7 +127,7 @@ fn truncate(s: &str, max: usize) -> String {
 }
 
 /// Extract plain text from a message `content` value (string or content blocks).
-fn extract_text(content: &Value) -> String {
+pub fn extract_text(content: &Value) -> String {
     match content {
         Value::String(s) => s.clone(),
         Value::Array(items) => {
@@ -373,7 +373,7 @@ pub fn parse_session_file(path: &Path) -> Result<SessionDetail, String> {
 }
 
 /// Recursively find all `.jsonl` files under a root directory.
-fn find_jsonl_files(root: &Path, out: &mut Vec<PathBuf>) {
+pub fn find_jsonl_files(root: &Path, out: &mut Vec<PathBuf>) {
     let rd = match fs::read_dir(root) {
         Ok(rd) => rd,
         Err(_) => return,
@@ -389,7 +389,7 @@ fn find_jsonl_files(root: &Path, out: &mut Vec<PathBuf>) {
 }
 
 /// Resolve the effective root: explicit argument wins over the default.
-fn resolve_root(root: Option<String>) -> PathBuf {
+pub fn resolve_root(root: Option<String>) -> PathBuf {
     match root {
         Some(r) if !r.trim().is_empty() => PathBuf::from(r),
         _ => sessions_root(),
