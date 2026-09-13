@@ -24,7 +24,7 @@ pi 会把每次会话完整记录到 `~/.pi/agent/sessions/` 下的 JSONL 文件
 
 **Pi Session Viewer** 把这些文件解析成结构化的聊天界面：谁说了什么、调用了哪个工具、参数是什么、返回了什么、花了多少 Token —— 一目了然。
 
-![界面预览](docs/images/screenshot.png)
+![界面预览（示例数据）](docs/images/preview.png)
 
 ---
 

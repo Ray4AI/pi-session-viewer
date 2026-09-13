@@ -24,7 +24,7 @@ pi records every session to JSONL files under `~/.pi/agent/sessions/` — messag
 
 **Pi Session Viewer** parses those files into a structured chat UI: who said what, which tool ran, what arguments it got, what it returned, and how many tokens it cost — at a glance.
 
-![Screenshot](docs/images/screenshot.png)
+![Screenshot (sample data)](docs/images/preview.png)
 
 ---
 
