@@ -49,11 +49,12 @@ pi 会把每次会话完整记录到 `~/.pi/agent/sessions/` 下的 JSONL 文件
 | `关键词` | 模糊匹配正文（大小写不敏感，支持中文） | `数据库连接池` |
 | `"精确短语"` | 必须逐字连续出现 | `"connection pool"` |
 | `-词` | 排除包含该词的内容 | `泄漏 -日志` |
-| `role:用户` | 按角色筛选 | `role:user` |
-| `role:助手+思考` | 多角色（或关系） | `role:assistant+thinking` |
-| `-role:结果` | 排除某角色 | `pool -role:toolResult` |
+| `role:用户` | 按角色筛选 | `role:助手` |
+| `role:助手+思考` | 多角色（或关系） | `role:user+thinking` |
+| `-role:结果` | 排除某角色 | `pool -role:工具结果` |
 
-角色可选：`user` `assistant` `thinking` `tool`（工具调用）`result`（工具结果）`event`（事件）。
+角色名中英文皆可：`user`/`用户`、`assistant`/`助手`、`thinking`/`思考`、`tool`/`工具调用`、`result`/`工具结果`、`event`/`事件`。
+（也接受简写 `u` `a` `t` `r` `e`。）
 
 界面上还提供：
 - **角色筛选面板** — 点击彩色标签即可「仅显示」或「排除」

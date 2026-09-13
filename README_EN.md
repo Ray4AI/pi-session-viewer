@@ -53,7 +53,9 @@ Search the **body of every message**, not just titles — then jump straight to 
 | `role:assistant+thinking` | Multiple roles (OR) | `role:user+assistant` |
 | `-role:result` | Exclude a role | `pool -role:toolResult` |
 
-Roles: `user` `assistant` `thinking` `tool` (calls) `result` (tool output) `event`.
+Roles can be named in English or Chinese: `user`/`用户`, `assistant`/`助手`,
+`thinking`/`思考`, `tool`/`工具调用`, `result`/`工具结果`, `event`/`事件`.
+Short forms `u` `a` `t` `r` `e` are also accepted.
 
 The UI also provides:
 - **Role filter panel** — click coloured chips to include or exclude

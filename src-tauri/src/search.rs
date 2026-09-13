@@ -36,13 +36,16 @@ pub enum DocRole {
 
 impl DocRole {
     fn parse(s: &str) -> Option<Self> {
-        match s.to_ascii_lowercase().as_str() {
-            "user" | "u" => Some(Self::User),
-            "assistant" | "ai" | "a" => Some(Self::Assistant),
-            "thinking" | "think" | "t" => Some(Self::Thinking),
-            "tool" | "toolcall" | "call" => Some(Self::ToolCall),
-            "result" | "toolresult" | "r" => Some(Self::ToolResult),
-            "event" | "e" => Some(Self::Event),
+        let lower = s.to_lowercase();
+        match lower.as_str() {
+            "user" | "u" | "用户" => Some(Self::User),
+            "assistant" | "ai" | "a" | "助手" => Some(Self::Assistant),
+            "thinking" | "think" | "t" | "思考" => Some(Self::Thinking),
+            "tool" | "toolcall" | "call" | "工具" | "调用" | "工具调用" => {
+                Some(Self::ToolCall)
+            }
+            "result" | "toolresult" | "r" | "结果" | "工具结果" => Some(Self::ToolResult),
+            "event" | "e" | "事件" => Some(Self::Event),
             _ => None,
         }
     }
@@ -884,6 +887,20 @@ mod tests {
         let r = search_core(&dir, "role:thinking 连接池", &mut cache, 100).unwrap();
         assert_eq!(r.total, 1);
         assert_eq!(r.hits[0].role, DocRole::Thinking);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn accepts_chinese_role_aliases() {
+        let dir = sample_dir("zh-role");
+        let mut cache = HashMap::new();
+        let r = search_core(&dir, "role:思考 连接池".trim(), &mut cache, 100).unwrap();
+        assert_eq!(r.total, 1);
+        assert_eq!(r.hits[0].role, DocRole::Thinking);
+
+        let r2 = search_core(&dir, "pool -role:工具结果", &mut cache, 100).unwrap();
+        assert!(!r2.hits.is_empty());
+        assert!(r2.hits.iter().all(|h| h.role != DocRole::ToolResult));
         let _ = fs::remove_dir_all(&dir);
     }
 
