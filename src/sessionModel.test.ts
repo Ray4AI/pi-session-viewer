@@ -14,7 +14,13 @@ import {
 function session(): RawEntry[] {
   return [
     { type: "session", id: "s", timestamp: "2026-01-01T00:00:00Z" },
-    { type: "model_change", id: "m1", parentId: null, provider: "anthropic", modelId: "claude" },
+    {
+      type: "model_change",
+      id: "m1",
+      parentId: null,
+      provider: "anthropic",
+      modelId: "claude",
+    },
     {
       type: "message",
       id: "u1",
@@ -32,7 +38,12 @@ function session(): RawEntry[] {
         content: [
           { type: "thinking", thinking: "hmm" },
           { type: "text", text: "hi" },
-          { type: "toolCall", id: "t1", name: "bash", arguments: { command: "ls" } },
+          {
+            type: "toolCall",
+            id: "t1",
+            name: "bash",
+            arguments: { command: "ls" },
+          },
         ],
         usage: {
           input: 10,
@@ -40,7 +51,13 @@ function session(): RawEntry[] {
           cacheRead: 2,
           cacheWrite: 1,
           totalTokens: 18,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0.5 },
+          cost: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            total: 0.5,
+          },
         },
       },
     },
@@ -103,7 +120,9 @@ describe("leaves and branchPoints", () => {
 describe("buildRenderItems", () => {
   it("attaches tool results to their assistant tool call", () => {
     const items = buildRenderItems(activeBranch(session()));
-    const assistant = items.find((i) => i.kind === "message" && i.role === "assistant");
+    const assistant = items.find(
+      (i) => i.kind === "message" && i.role === "assistant",
+    );
     expect(assistant).toBeDefined();
     if (assistant?.kind === "message") {
       expect(assistant.toolCalls).toHaveLength(1);
@@ -111,12 +130,16 @@ describe("buildRenderItems", () => {
       expect(assistant.toolCalls![0].result?.toolName).toBe("bash");
     }
     // The standalone toolResult should NOT appear as its own item.
-    expect(items.filter((i) => i.kind === "message" && i.role === "toolResult")).toHaveLength(0);
+    expect(
+      items.filter((i) => i.kind === "message" && i.role === "toolResult"),
+    ).toHaveLength(0);
   });
 
   it("renders model_change as an event", () => {
     const items = buildRenderItems(activeBranch(session()));
-    const ev = items.find((i) => i.kind === "event" && i.eventType === "model_change");
+    const ev = items.find(
+      (i) => i.kind === "event" && i.eventType === "model_change",
+    );
     expect(ev).toBeDefined();
   });
 });
@@ -157,7 +180,10 @@ describe("legacy linear sessions", () => {
     const entries: RawEntry[] = [
       { type: "session", timestamp: "2026-01-01T00:00:00Z" },
       { type: "message", message: { role: "user", content: "a" } },
-      { type: "message", message: { role: "assistant", content: [{ type: "text", text: "b" }] } },
+      {
+        type: "message",
+        message: { role: "assistant", content: [{ type: "text", text: "b" }] },
+      },
     ];
     const branch = activeBranch(entries);
     expect(branch).toHaveLength(2);

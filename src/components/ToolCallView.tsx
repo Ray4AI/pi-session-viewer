@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { AgentMessage, ToolCall } from "../types";
-import { contentBlocks, safeJson } from "../sessionModel";
+import { contentBlocks } from "../sessionModel";
 import { Markdown } from "./Markdown";
 
 interface Props {
@@ -84,16 +84,18 @@ function ArgsView({
     return (
       <div className="tool-section">
         <div className="tool-label">编辑内容（{args.edits.length} 处）</div>
-        {(args.edits as Array<{ oldText?: string; newText?: string }>).map((ed, i) => (
-          <div key={i} className="edit-block">
-            <pre className="code-block removed">
-              <code>{ed.oldText ?? ""}</code>
-            </pre>
-            <pre className="code-block added">
-              <code>{ed.newText ?? ""}</code>
-            </pre>
-          </div>
-        ))}
+        {(args.edits as Array<{ oldText?: string; newText?: string }>).map(
+          (ed, i) => (
+            <div key={i} className="edit-block">
+              <pre className="code-block removed">
+                <code>{ed.oldText ?? ""}</code>
+              </pre>
+              <pre className="code-block added">
+                <code>{ed.newText ?? ""}</code>
+              </pre>
+            </div>
+          ),
+        )}
       </div>
     );
   }
@@ -136,7 +138,8 @@ function DiffView({ text }: { text: string }) {
         {text.split("\n").map((line, i) => {
           let cls = "";
           if (line.startsWith("+") && !line.startsWith("+++")) cls = "diff-add";
-          else if (line.startsWith("-") && !line.startsWith("---")) cls = "diff-del";
+          else if (line.startsWith("-") && !line.startsWith("---"))
+            cls = "diff-del";
           else if (line.startsWith("@@")) cls = "diff-hunk";
           return (
             <span key={i} className={cls}>
@@ -150,13 +153,18 @@ function DiffView({ text }: { text: string }) {
   );
 }
 
-function buildSummary(args: Record<string, unknown>, result?: AgentMessage): string {
-  if (typeof args.command === "string") return truncate(args.command.replace(/\s+/g, " "), 90);
+function buildSummary(
+  args: Record<string, unknown>,
+  result?: AgentMessage,
+): string {
+  if (typeof args.command === "string")
+    return truncate(args.command.replace(/\s+/g, " "), 90);
   if (typeof args.path === "string") {
     const extra: string[] = [];
     if (args.offset !== undefined) extra.push(`offset=${args.offset}`);
     if (args.limit !== undefined) extra.push(`limit=${args.limit}`);
-    if (typeof args.pattern === "string") extra.push(`pattern=${truncate(args.pattern, 40)}`);
+    if (typeof args.pattern === "string")
+      extra.push(`pattern=${truncate(args.pattern, 40)}`);
     return `${args.path}${extra.length ? " · " + extra.join(" ") : ""}`;
   }
   if (typeof args.url === "string") return truncate(args.url, 100);
@@ -199,5 +207,3 @@ function pick(obj: Record<string, unknown>, keys: string[]) {
 function truncate(s: string, n: number) {
   return s.length > n ? s.slice(0, n) + "…" : s;
 }
-
-export { safeJson };

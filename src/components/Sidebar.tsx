@@ -92,7 +92,10 @@ export function Sidebar({
         )}
       </div>
 
-      <div className="project-toggle" onClick={() => setShowProjects((v) => !v)}>
+      <div
+        className="project-toggle"
+        onClick={() => setShowProjects((v) => !v)}
+      >
         <span>项目</span>
         <span className="chev">{showProjects ? "▾" : "▸"}</span>
       </div>
@@ -121,7 +124,9 @@ export function Sidebar({
 
       <div className="session-scroll">
         {grouped.length === 0 && (
-          <div className="empty-hint">{loading ? "正在扫描…" : "没有匹配的会话"}</div>
+          <div className="empty-hint">
+            {loading ? "正在扫描…" : "没有匹配的会话"}
+          </div>
         )}
         {grouped.map(([key, list]) => (
           <div key={key} className="session-group">
@@ -152,7 +157,10 @@ function SessionRow({
 }) {
   const title = s.name || s.first_user_message || `会话 ${s.id.slice(0, 8)}`;
   return (
-    <button className={`session-row ${active ? "active" : ""}`} onClick={onClick}>
+    <button
+      className={`session-row ${active ? "active" : ""}`}
+      onClick={onClick}
+    >
       <div className="row-top">
         <span className="row-title">{truncate(title, 60)}</span>
         {s.has_errors && <span className="err-dot" title="包含错误" />}

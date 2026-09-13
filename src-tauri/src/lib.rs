@@ -1,8 +1,6 @@
 pub mod session;
 
-use session::{
-    count_sessions, default_sessions_root, list_projects, list_sessions, load_session,
-};
+use session::{default_sessions_root, list_projects, list_sessions, load_session};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -13,7 +11,6 @@ pub fn run() {
             list_sessions,
             load_session,
             default_sessions_root,
-            count_sessions,
             list_projects,
         ])
         .run(tauri::generate_context!())

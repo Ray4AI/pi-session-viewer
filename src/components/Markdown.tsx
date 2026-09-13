@@ -12,7 +12,9 @@ export function Markdown({ children }: Props) {
     <div className="markdown-body">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[[rehypeHighlight, { detect: true, ignoreMissing: true }]]}
+        rehypePlugins={[
+          [rehypeHighlight, { detect: true, ignoreMissing: true }],
+        ]}
         components={{
           a: ({ node, ...props }) => (
             <a {...props} target="_blank" rel="noreferrer" />

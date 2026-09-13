@@ -85,7 +85,11 @@ export default function App() {
 
   const pickRoot = useCallback(async () => {
     if (!isTauri) return;
-    const picked = await open({ directory: true, multiple: false, title: "选择会话目录" });
+    const picked = await open({
+      directory: true,
+      multiple: false,
+      title: "选择会话目录",
+    });
     if (typeof picked === "string") {
       setRoot(picked);
       setActiveProject(null);
@@ -157,7 +161,12 @@ export default function App() {
                     timestamp={item.entry.timestamp}
                   />
                 ) : (
-                  <EventRow key={item.entry.id ?? i} label={item.label} detail={item.detail} timestamp={item.entry.timestamp} />
+                  <EventRow
+                    key={item.entry.id ?? i}
+                    label={item.label}
+                    detail={item.detail}
+                    timestamp={item.entry.timestamp}
+                  />
                 ),
               )}
             </div>
@@ -187,13 +196,19 @@ function SessionHeader({
     <header className="session-header">
       <div className="header-title-row">
         <h1>{sessionTitle(detail)}</h1>
-        {detail.summary.has_errors && <span className="badge-error">包含错误</span>}
+        {detail.summary.has_errors && (
+          <span className="badge-error">包含错误</span>
+        )}
       </div>
       <div className="header-meta">
         <Meta label="目录" value={detail.summary.cwd} mono />
         <Meta label="会话 ID" value={detail.summary.id.slice(0, 8)} mono />
-        {detail.summary.model && <Meta label="模型" value={detail.summary.model} />}
-        {detail.summary.version != null && <Meta label="格式版本" value={`v${detail.summary.version}`} />}
+        {detail.summary.model && (
+          <Meta label="模型" value={detail.summary.model} />
+        )}
+        {detail.summary.version != null && (
+          <Meta label="格式版本" value={`v${detail.summary.version}`} />
+        )}
         <Meta label="创建" value={formatTime(detail.summary.created_at)} />
         <Meta label="更新" value={formatTime(detail.summary.updated_at)} />
         <Meta label="大小" value={formatBytes(detail.summary.size_bytes)} />
@@ -206,9 +221,15 @@ function SessionHeader({
         {stats.usage.hasUsage && (
           <>
             <Stat label="输入 Tokens" value={formatTokens(stats.usage.input)} />
-            <Stat label="输出 Tokens" value={formatTokens(stats.usage.output)} />
+            <Stat
+              label="输出 Tokens"
+              value={formatTokens(stats.usage.output)}
+            />
             {stats.usage.cacheRead > 0 && (
-              <Stat label="缓存读" value={formatTokens(stats.usage.cacheRead)} />
+              <Stat
+                label="缓存读"
+                value={formatTokens(stats.usage.cacheRead)}
+              />
             )}
             <Stat label="总花费" value={formatCost(stats.usage.cost)} />
           </>
@@ -257,10 +278,15 @@ function EventRow({
     <div className="event-row">
       <div className="event-line" />
       <div className="event-body">
-        <button className="event-head" onClick={() => hasDetail && setOpen((v) => !v)}>
+        <button
+          className="event-head"
+          onClick={() => hasDetail && setOpen((v) => !v)}
+        >
           <span className="event-dot" />
           <span className="event-label">{label}</span>
-          {timestamp && <span className="event-time">{formatTime(timestamp)}</span>}
+          {timestamp && (
+            <span className="event-time">{formatTime(timestamp)}</span>
+          )}
           {hasDetail && <span className="chev">{open ? "▾" : "▸"}</span>}
         </button>
         {open && hasDetail && (
@@ -273,7 +299,15 @@ function EventRow({
   );
 }
 
-function Meta({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Meta({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <span className={`meta-item ${mono ? "mono" : ""}`}>
       <span className="meta-label">{label}</span>

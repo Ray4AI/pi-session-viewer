@@ -1,7 +1,12 @@
 import { useState } from "react";
 import type { AgentMessage } from "../types";
 import type { ToolCallView as ToolCallViewType } from "../sessionModel";
-import { contentBlocks, formatCost, formatTokens, formatTime } from "../sessionModel";
+import {
+  contentBlocks,
+  formatCost,
+  formatTokens,
+  formatTime,
+} from "../sessionModel";
 import { Markdown } from "./Markdown";
 import { ToolCallView } from "./ToolCallView";
 
@@ -13,15 +18,33 @@ interface Props {
   timestamp?: string | number;
 }
 
-export function MessageView({ role, message, toolCalls, index, timestamp }: Props) {
+export function MessageView({
+  role,
+  message,
+  toolCalls,
+  index,
+  timestamp,
+}: Props) {
   if (role === "user") return <UserMessage message={message} index={index} />;
   if (role === "assistant")
-    return <AssistantMessage message={message} toolCalls={toolCalls ?? []} timestamp={timestamp} />;
+    return (
+      <AssistantMessage
+        message={message}
+        toolCalls={toolCalls ?? []}
+        timestamp={timestamp}
+      />
+    );
   if (role === "custom") return <CustomMessage message={message} />;
   return <ToolResultMessage message={message} />;
 }
 
-function UserMessage({ message, index }: { message: AgentMessage; index: number }) {
+function UserMessage({
+  message,
+  index,
+}: {
+  message: AgentMessage;
+  index: number;
+}) {
   const blocks = contentBlocks(message.content);
   return (
     <div className="msg msg-user">
@@ -76,8 +99,12 @@ function AssistantMessage({
         <div className="msg-head">
           <span className="msg-role">助手</span>
           {message.model && <span className="msg-model">{message.model}</span>}
-          <span className="msg-time">{formatTime(timestamp ?? message.timestamp)}</span>
-          {message.stopReason === "error" && <span className="badge-error">错误</span>}
+          <span className="msg-time">
+            {formatTime(timestamp ?? message.timestamp)}
+          </span>
+          {message.stopReason === "error" && (
+            <span className="badge-error">错误</span>
+          )}
         </div>
 
         {message.errorMessage && (
@@ -89,24 +116,57 @@ function AssistantMessage({
 
         {blocks.map((b, i) => {
           if (b.type === "thinking") {
-            return <ThinkingBlock key={i} text={String((b as { thinking: string }).thinking)} />;
+            return (
+              <ThinkingBlock
+                key={i}
+                text={String((b as { thinking: string }).thinking)}
+              />
+            );
           }
           if (b.type === "text") {
-            return <Markdown key={i}>{String((b as { text: string }).text)}</Markdown>;
+            return (
+              <Markdown key={i}>
+                {String((b as { text: string }).text)}
+              </Markdown>
+            );
           }
           if (b.type === "toolCall") {
-            const tc = toolCalls.find((t) => t.call.id === (b as { id: string }).id);
-            if (tc) return <ToolCallView key={i} call={tc.call} result={tc.result} />;
+            const tc = toolCalls.find(
+              (t) => t.call.id === (b as { id: string }).id,
+            );
+            if (tc)
+              return <ToolCallView key={i} call={tc.call} result={tc.result} />;
             // fallback if not matched
-            const call = b as unknown as { id: string; name: string; arguments: Record<string, unknown> };
-            return <ToolCallView key={i} call={{ type: "toolCall", id: call.id, name: call.name, arguments: call.arguments ?? {} }} />;
+            const call = b as unknown as {
+              id: string;
+              name: string;
+              arguments: Record<string, unknown>;
+            };
+            return (
+              <ToolCallView
+                key={i}
+                call={{
+                  type: "toolCall",
+                  id: call.id,
+                  name: call.name,
+                  arguments: call.arguments ?? {},
+                }}
+              />
+            );
           }
           return null;
         })}
 
         {/* tool calls whose ids somehow didn't appear in blocks */}
         {toolCalls
-          .filter((t) => !blocks.some((b) => b.type === "toolCall" && (b as { id: string }).id === t.call.id))
+          .filter(
+            (t) =>
+              !blocks.some(
+                (b) =>
+                  b.type === "toolCall" &&
+                  (b as { id: string }).id === t.call.id,
+              ),
+          )
           .map((t, i) => (
             <ToolCallView key={`extra-${i}`} call={t.call} result={t.result} />
           ))}
@@ -115,12 +175,16 @@ function AssistantMessage({
           <div className="usage-bar">
             <Usage label="输入" value={formatTokens(usage.input)} />
             <Usage label="输出" value={formatTokens(usage.output)} />
-            {usage.cacheRead > 0 && <Usage label="缓存读" value={formatTokens(usage.cacheRead)} />}
+            {usage.cacheRead > 0 && (
+              <Usage label="缓存读" value={formatTokens(usage.cacheRead)} />
+            )}
             {usage.cacheWrite > 0 && (
               <Usage label="缓存写" value={formatTokens(usage.cacheWrite)} />
             )}
             <Usage label="总计" value={formatTokens(usage.totalTokens)} />
-            {usage.cost?.total ? <Usage label="花费" value={formatCost(usage.cost.total)} /> : null}
+            {usage.cost?.total ? (
+              <Usage label="花费" value={formatCost(usage.cost.total)} />
+            ) : null}
           </div>
         )}
       </div>
@@ -155,7 +219,9 @@ function CustomMessage({ message }: { message: AgentMessage }) {
       <div className="msg-avatar custom">⚙</div>
       <div className="msg-content">
         <div className="msg-head">
-          <span className="msg-role">扩展消息 · {message.customType || "unknown"}</span>
+          <span className="msg-role">
+            扩展消息 · {message.customType || "unknown"}
+          </span>
         </div>
         <pre className="code-block">{text}</pre>
       </div>
@@ -171,10 +237,15 @@ function ToolResultMessage({ message }: { message: AgentMessage }) {
     .join("\n");
   const [open, setOpen] = useState(false);
   return (
-    <div className={`msg msg-toolresult ${message.isError ? "tool-error" : ""}`}>
+    <div
+      className={`msg msg-toolresult ${message.isError ? "tool-error" : ""}`}
+    >
       <div className="msg-avatar tool">🔧</div>
       <div className="msg-content">
-        <button className="msg-head clickable" onClick={() => setOpen((v) => !v)}>
+        <button
+          className="msg-head clickable"
+          onClick={() => setOpen((v) => !v)}
+        >
           <span className="msg-role">工具结果</span>
           <span className="msg-model">{message.toolName}</span>
           {message.isError && <span className="badge-error">错误</span>}

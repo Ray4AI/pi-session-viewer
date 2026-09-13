@@ -52,7 +52,10 @@ export function buildTree(entries: RawEntry[]): Map<string | null, RawEntry[]> {
 }
 
 /** Walk root → leaf along the latest child at each node. */
-export function activeBranch(entries: RawEntry[], leafId?: string | null): RawEntry[] {
+export function activeBranch(
+  entries: RawEntry[],
+  leafId?: string | null,
+): RawEntry[] {
   const treeEntries = entries.filter((e) => e.type !== "session");
   if (treeEntries.length === 0) return [];
 
@@ -109,7 +112,9 @@ export function leaves(entries: RawEntry[]): RawEntry[] {
 }
 
 /** Nodes that have more than one child (branch points). */
-export function branchPoints(entries: RawEntry[]): { entry: RawEntry; count: number }[] {
+export function branchPoints(
+  entries: RawEntry[],
+): { entry: RawEntry; count: number }[] {
   const treeEntries = entries.filter((e) => e.type !== "session");
   const children = buildTree(treeEntries);
   const byId = new Map<string, RawEntry>();
@@ -130,7 +135,9 @@ export function messageOf(entry: RawEntry): AgentMessage | undefined {
   return undefined;
 }
 
-export function contentBlocks(content: string | ContentBlock[] | undefined): ContentBlock[] {
+export function contentBlocks(
+  content: string | ContentBlock[] | undefined,
+): ContentBlock[] {
   if (!content) return [];
   if (typeof content === "string") return [{ type: "text", text: content }];
   return content;
@@ -164,7 +171,12 @@ export function buildRenderItems(branch: RawEntry[]): RenderItem[] {
             // Attached to its assistant tool call; skip standalone rendering.
             break;
           }
-          items.push({ kind: "message", role: "toolResult", entry, message: msg });
+          items.push({
+            kind: "message",
+            role: "toolResult",
+            entry,
+            message: msg,
+          });
           break;
         }
         if (msg.role === "user") {
@@ -179,7 +191,13 @@ export function buildRenderItems(branch: RawEntry[]): RenderItem[] {
               call,
               result: call.id ? resultsByCallId.get(call.id) : undefined,
             }));
-          items.push({ kind: "message", role: "assistant", entry, message: msg, toolCalls });
+          items.push({
+            kind: "message",
+            role: "assistant",
+            entry,
+            message: msg,
+            toolCalls,
+          });
           break;
         }
         if (msg.role === "custom" || msg.role === "bashExecution") {
@@ -192,7 +210,10 @@ export function buildRenderItems(branch: RawEntry[]): RenderItem[] {
           entry,
           eventType: msg.role,
           label: humanRole(msg.role),
-          detail: typeof (msg as { summary?: unknown }).summary === "string" ? String((msg as { summary?: unknown }).summary) : undefined,
+          detail:
+            typeof (msg as { summary?: unknown }).summary === "string"
+              ? String((msg as { summary?: unknown }).summary)
+              : undefined,
         });
         break;
       }
@@ -357,7 +378,11 @@ function contentToText(v: unknown): string {
   if (typeof v === "string") return v;
   if (Array.isArray(v)) {
     return v
-      .map((b) => (b && typeof b === "object" && "text" in b ? String((b as { text: unknown }).text) : ""))
+      .map((b) =>
+        b && typeof b === "object" && "text" in b
+          ? String((b as { text: unknown }).text)
+          : "",
+      )
       .filter(Boolean)
       .join("\n");
   }

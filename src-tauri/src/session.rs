@@ -242,12 +242,10 @@ pub fn parse_session_file(path: &Path) -> Result<SessionDetail, String> {
                     }
                     "assistant" => {
                         assistant_count += 1;
-                        if let Some(content) = msg.and_then(|m| m.get("content")) {
-                            if let Value::Array(items) = content {
-                                for item in items {
-                                    if item.get("type").and_then(|t| t.as_str()) == Some("toolCall") {
-                                        tool_call_count += 1;
-                                    }
+                        if let Some(Value::Array(items)) = msg.and_then(|m| m.get("content")) {
+                            for item in items {
+                                if item.get("type").and_then(|t| t.as_str()) == Some("toolCall") {
+                                    tool_call_count += 1;
                                 }
                             }
                         }
@@ -283,7 +281,10 @@ pub fn parse_session_file(path: &Path) -> Result<SessionDetail, String> {
                 if let Some(msg) = entry.rest.get("message") {
                     if msg.get("role").and_then(|r| r.as_str()) == Some("assistant") {
                         model = msg.get("model").and_then(|v| v.as_str()).map(String::from);
-                        provider = msg.get("provider").and_then(|v| v.as_str()).map(String::from);
+                        provider = msg
+                            .get("provider")
+                            .and_then(|v| v.as_str())
+                            .map(String::from);
                         if model.is_some() {
                             break;
                         }
@@ -431,18 +432,6 @@ pub fn default_sessions_root() -> String {
     sessions_root().to_string_lossy().to_string()
 }
 
-/// Recursively count `.jsonl` files under a directory (used to validate a pick).
-#[tauri::command]
-pub fn count_sessions(root: String) -> Result<usize, String> {
-    let base = PathBuf::from(&root);
-    if !base.exists() {
-        return Err(format!("目录不存在: {root}"));
-    }
-    let mut files = Vec::new();
-    find_jsonl_files(&base, &mut files);
-    Ok(files.len())
-}
-
 /// Group summaries by project for the sidebar.
 #[derive(Debug, Clone, Serialize)]
 pub struct ProjectGroup {
@@ -457,12 +446,14 @@ pub fn list_projects(root: Option<String>) -> Result<Vec<ProjectGroup>, String> 
     let sessions = list_sessions(root)?;
     let mut map: HashMap<String, ProjectGroup> = HashMap::new();
     for s in sessions {
-        let entry = map.entry(s.project_key.clone()).or_insert_with(|| ProjectGroup {
-            key: s.project_key.clone(),
-            label: s.cwd.clone(),
-            session_count: 0,
-            last_updated: None,
-        });
+        let entry = map
+            .entry(s.project_key.clone())
+            .or_insert_with(|| ProjectGroup {
+                key: s.project_key.clone(),
+                label: s.cwd.clone(),
+                session_count: 0,
+                last_updated: None,
+            });
         entry.session_count += 1;
         if entry.last_updated.is_none() || s.updated_at > entry.last_updated {
             entry.last_updated = s.updated_at.clone();
@@ -479,7 +470,9 @@ mod tests {
     use std::io::Write;
 
     fn write_sample(dir: &Path) -> PathBuf {
-        let file = dir.join("--root-workspace--").join("2026-01-01T00-00-00-000Z_abc.jsonl");
+        let file = dir
+            .join("--root-workspace--")
+            .join("2026-01-01T00-00-00-000Z_abc.jsonl");
         fs::create_dir_all(file.parent().unwrap()).unwrap();
         let lines = vec![
             r#"{"type":"session","version":3,"id":"abc","timestamp":"2026-01-01T00:00:00.000Z","cwd":"/root/workspace"}"#,
@@ -510,7 +503,10 @@ mod tests {
         assert_eq!(detail.summary.model.as_deref(), Some("claude-sonnet-4-5"));
         assert_eq!(detail.summary.cwd, "/root/workspace");
         assert_eq!(detail.summary.version, Some(3));
-        assert_eq!(detail.summary.first_user_message.as_deref(), Some("hello world"));
+        assert_eq!(
+            detail.summary.first_user_message.as_deref(),
+            Some("hello world")
+        );
         let _ = fs::remove_dir_all(&tmp);
     }
 
@@ -530,7 +526,10 @@ mod tests {
     #[test]
     fn project_label_roundtrip() {
         assert_eq!(project_label_from_dir("--root--"), "/root");
-        assert_eq!(project_label_from_dir("--root-workspace--"), "/root/workspace");
+        assert_eq!(
+            project_label_from_dir("--root-workspace--"),
+            "/root/workspace"
+        );
         // Windows drive letters decode to a drive-rooted path.
         assert_eq!(
             project_label_from_dir("--C-Users-Ray-project--"),
